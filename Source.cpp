@@ -62,6 +62,7 @@ int main() {
       tp1 = tp2; //update the old time point
       float fElapsedTime = elapsedTime.count(); //put the elapsed time in float because all the game is in float
 
+      /////////////////////////////////////////////////////////////////
       //CONTROLS
       //Handle CCW Rotation
       
@@ -87,6 +88,8 @@ int main() {
          fPlayerY -= cosf(fPlayerA) * 5.0f * fElapsedTime;
       }
 
+
+      /////////////////////////////////////////////////////////////////
       for (int x = 0; x < nScreenWidth; x++)
       {
          //For each column, calculate the project ray angle into world space
@@ -142,7 +145,15 @@ int main() {
             else if(y > nCeiling && y <= nFloor)
                screen[y * nScreenWidth + x] = nShade;
             else
-               screen[y * nScreenWidth + x] = ' ';
+            {
+               //Shade floor based on distance
+               float b = 1.0f - (((float)y - nScreenHeight / 2.0f) / ((float)nScreenHeight / 2.0f));
+               if (b < 0.25)        nShade = '#';
+               else if (b < 0.5)    nShade = 'x';
+               else if (b < 0.75)   nShade = '.';
+               else if (b < 0.9)    nShade = ' ';
+               screen[y * nScreenWidth + x] = nShade;
+            }
          }
 
       }
