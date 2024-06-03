@@ -1,4 +1,7 @@
 #include <iostream>
+#include <vector>
+#include <utility>
+#include <algorithm>
 #include <chrono>
 using namespace std;
 
@@ -68,17 +71,22 @@ int main() {
       
       //counter clockwise decrease the angle
       if (GetAsyncKeyState((unsigned short)'A') & 0x8000)
-         fPlayerA -= (0.8f) * fElapsedTime;
+         fPlayerA -= (0.9f) * fElapsedTime;
 
       //clockwise encrease the angle
       if (GetAsyncKeyState((unsigned short)'D') & 0x8000)
-         fPlayerA += (0.8f) * fElapsedTime;
+         fPlayerA += (0.9f) * fElapsedTime;
 
       //When the character is walking forward
       if (GetAsyncKeyState((unsigned short)'W') & 0x8000)
       {
          fPlayerX += sinf(fPlayerA) * 5.0f * fElapsedTime;
          fPlayerY += cosf(fPlayerA) * 5.0f * fElapsedTime;
+         if (map[(int)fPlayerY * nMapWidth + (int)fPlayerX] == '#')
+         {
+            fPlayerX -= sinf(fPlayerA) * 5.0f * fElapsedTime;
+            fPlayerY -= cosf(fPlayerA) * 5.0f * fElapsedTime;
+         }
       }
 
       //When the character is walking backwards
@@ -97,6 +105,7 @@ int main() {
 
          float fDistanceToWall = 0; //distance from the player to the wall for that given angle
          bool bHitWall = false;
+         bool bBoundary = false;
 
          float fEyeX = sinf(fRayAngle); //unit vector for ray in player space
          float fEyeY = cosf(fRayAngle);
@@ -121,6 +130,26 @@ int main() {
                if (map[nTestY * nMapWidth + nTestX] == '#') //Converting the 2D system into a 1D for the array
                {
                   bHitWall = true;
+
+                  vector<pair<float, float>> p; // distance, dot
+
+                  for (int tx = 0; tx < 2; tx++)
+                     for (int ty = 0; ty < 2; ty++)
+                     {
+                        float vy = (float)nTestY + ty - fPlayerY;
+                        float vx = (float)nTestX + ty - fPlayerX;
+                        float d = sqrt(vx * vx + vy * vy);
+                        float dot = (fEyeX * vx / d) + (fEyeY * vy / d);
+                        p.push_back(make_pair(d, dot));
+                     }
+
+                  //Sort Pair from closest to farthest
+                  sort(p.begin(), p.end(), [](const pair<float, float>& left, const pair<float, float>& right) {return left.first < right.first; });
+
+                  float fBound = 0.01;
+                  if (acos(p.at(0).second) < fBound) bBoundary = true;
+                  if (acos(p.at(1).second) < fBound) bBoundary = true;
+                  //if (acos(p.at(3).second) < fBound) bBoundary = true;
                }
             }
          }
@@ -136,6 +165,8 @@ int main() {
          else if (fDistanceToWall < fDepth / 2.0f)       nShade = 0x2592;
          else if (fDistanceToWall < fDepth)              nShade = 0x2591;
          else                                            nShade = ' ';     //Too far away
+
+         if (bBoundary)       nShade = ' '; //Black it out
 
          //draw into the column
          for (int y = 0; y < nScreenHeight; y++)
@@ -157,6 +188,21 @@ int main() {
          }
 
       }
+
+      //Display Stats
+      swprintf_s(screen, 40, L"X=%3.2f, Y=%3.2f, A=%3.2f FPS=%3.2f ", fPlayerX, fPlayerY, fPlayerA, 1.0f / fElapsedTime);
+
+
+      //Display Map
+      for (int nx = 0; nx < nMapWidth; nx++)
+         for (int ny = 0; ny < nMapWidth; ny++)
+         {
+            screen[(ny + 1) * nScreenWidth + nx] = map[ny * nMapWidth + nx];
+         }
+
+      //Marker to show where the player is at
+      screen[((int)fPlayerY + 1) * nScreenWidth + (int)fPlayerX] = 'P';
+
       //To write on the screen
       screen[nScreenWidth * nScreenHeight - 1] = '\0';
       WriteConsoleOutputCharacter(hConsole, screen, nScreenWidth * nScreenHeight, { 0,0 }, &dwBytesWritten);
